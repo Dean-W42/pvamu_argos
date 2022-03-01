@@ -1,0 +1,168 @@
+/*
+   Argos
+   Folder: Admissions
+   Report: APPL_Decisions by PVAMU Users
+   T01MAR2022 \ 77j5e
+   */
+
+
+-- drop-down for term
+-- dd_term
+
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc "display" FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no+2 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no+1 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no+3 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       NULL, NULL,'--------------' FROM dual
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no-1 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no-2 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no-3 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       NULL, NULL, '--------------' FROM dual
+
+
+-- Accepted Applications
+-- MC_Rejected_2
+
+with a    as (select       "pidm", "term", "lvl", "apst"
+        from (select        saradap_pidm"pidm", saradap_term_code_entry"term", saradap_levl_code"lvl", saradap_apst_code"apst", row_number()
+        over (partition by  saradap_pidm
+              order by      saradap_appl_no desc nulls last) rn
+              from          saradap@prod
+              where         saradap_term_code_entry=:dd_term.STVTERM_CODE
+  and exists (select        stvapst_code from stvapst where stvapst_code=saradap_apst_code and stvapst_code='D')
+  and exists (select        stvlevl_code from stvlevl where stvlevl_code=saradap_levl_code and stvlevl_code='UG'))
+              where         rn=1),
+b         as (select       "b_pidm", "b_term", "b_appno", "user_id", "apdc", "apdc_date"
+        from (select        sarappd_pidm"b_pidm", sarappd_term_code_entry"b_term", sarappd_appl_no"b_appno", sarappd_user"user_id", sarappd_apdc_code"apdc", to_char(sarappd_apdc_date,'mm/dd/yyyy')"apdc_date", row_number()
+        over (partition by  sarappd_pidm || sarappd_appl_no
+              order by      sarappd_seq_no desc nulls last) rn
+              from          sarappd@prod
+              where         sarappd_term_code_entry=:dd_term.STVTERM_CODE
+              and           sarappd_pidm in(select "pidm" from a))
+              where         rn=1
+              and          "apdc"<>'RJ')
+
+      select (select        stvterm_desc from stvterm where stvterm_code="term") "semester",
+                           "user_id",
+             (select        guriden_desc from guriden@prod where guriden_user_id="user_id") "user_description",
+              count       ("pidm") "accepted"
+
+        from  a
+  inner join  b         on "b_pidm"="pidm"
+    group by               "term", "user_id"
+    order by                4 desc
+
+
+-- Rejected Applications
+-- MC_Rejected_1
+ 
+with a    as (select       "pidm", "term", "lvl", "apst"
+        from (select        saradap_pidm"pidm", saradap_term_code_entry"term", saradap_levl_code"lvl", saradap_apst_code"apst", row_number()
+        over (partition by  saradap_pidm
+              order by      saradap_appl_no desc nulls last) rn
+              from          saradap@prod
+              where         saradap_term_code_entry=:dd_term.STVTERM_CODE
+  and exists (select        stvapst_code from stvapst where stvapst_code=saradap_apst_code and stvapst_code='D')
+  and exists (select        stvlevl_code from stvlevl where stvlevl_code=saradap_levl_code and stvlevl_code='UG'))
+              where         rn=1),
+b         as (select       "b_pidm", "b_term", "b_appno", "user_id", "apdc", "apdc_date"
+        from (select        sarappd_pidm"b_pidm", sarappd_term_code_entry"b_term", sarappd_appl_no"b_appno", sarappd_user"user_id", sarappd_apdc_code"apdc", to_char(sarappd_apdc_date,'mm/dd/yyyy')"apdc_date", row_number()
+        over (partition by  sarappd_pidm || sarappd_appl_no
+              order by      sarappd_seq_no desc nulls last) rn
+              from          sarappd@prod
+              where         sarappd_term_code_entry=:dd_term.STVTERM_CODE
+              and           sarappd_pidm in(select "pidm" from a))
+              where         rn=1
+              and          "apdc"='RJ')
+
+      select (select        stvterm_desc from stvterm where stvterm_code="term") "semester",
+                           "user_id",
+             (select        guriden_desc from guriden@prod where guriden_user_id="user_id") "user_description",
+              count       ("pidm") "rejected"
+
+        from  a
+  inner join  b         on "b_pidm"="pidm"
+    group by               "term", "user_id"
+    order by                4 desc
+
+
+-- Accepted Applications >= Select DATE
+-- MC_Rejected_3
+
+with a    as (select       "pidm", "term", "lvl", "apst"
+        from (select        saradap_pidm"pidm", saradap_term_code_entry"term", saradap_levl_code"lvl", saradap_apst_code"apst", row_number()
+        over (partition by  saradap_pidm
+              order by      saradap_appl_no desc nulls last) rn
+              from          saradap@prod
+              where         saradap_term_code_entry=:dd_term.STVTERM_CODE
+  and exists (select        stvapst_code from stvapst where stvapst_code=saradap_apst_code and stvapst_code='D')
+  and exists (select        stvlevl_code from stvlevl where stvlevl_code=saradap_levl_code and stvlevl_code='UG'))
+              where         rn=1),
+b         as (select       "b_pidm", "b_term", "b_appno", "user_id", "apdc", "apdc_date"
+        from (select        sarappd_pidm"b_pidm", sarappd_term_code_entry"b_term", sarappd_appl_no"b_appno", sarappd_user"user_id", sarappd_apdc_code"apdc", to_char(sarappd_apdc_date,'mm/dd/yyyy')"apdc_date", row_number()
+        over (partition by  sarappd_pidm || sarappd_appl_no
+              order by      sarappd_seq_no desc nulls last) rn
+              from          sarappd@prod
+              where         sarappd_term_code_entry=:dd_term.STVTERM_CODE
+              and           sarappd_apdc_date>=to_date(:DateEdit1)
+              and           sarappd_pidm in(select "pidm" from a))
+              where         rn=1
+              and          "apdc"<>'RJ')
+
+      select (select        stvterm_desc from stvterm where stvterm_code="term") "semester",
+                           "user_id",
+             (select        guriden_desc from guriden@prod where guriden_user_id="user_id") "user_description",
+              count       ("pidm") "accepted"
+
+        from  a
+  inner join  b         on "b_pidm"="pidm"
+    group by               "term", "user_id"
+    order by                4 desc
+
+
+-- Reject Applications >= Select DATE
+-- MC_Rejected_4
+
+with a    as (select       "pidm", "term", "lvl", "apst"
+        from (select        saradap_pidm"pidm", saradap_term_code_entry"term", saradap_levl_code"lvl", saradap_apst_code"apst", row_number()
+        over (partition by  saradap_pidm
+              order by      saradap_appl_no desc nulls last) rn
+              from          saradap@prod
+              where         saradap_term_code_entry=:dd_term.STVTERM_CODE
+  and exists (select        stvapst_code from stvapst where stvapst_code=saradap_apst_code and stvapst_code='D')
+  and exists (select        stvlevl_code from stvlevl where stvlevl_code=saradap_levl_code and stvlevl_code='UG'))
+              where         rn=1),
+b         as (select       "b_pidm", "b_term", "b_appno", "user_id", "apdc", "apdc_date"
+        from (select        sarappd_pidm"b_pidm", sarappd_term_code_entry"b_term", sarappd_appl_no"b_appno", sarappd_user"user_id", sarappd_apdc_code"apdc", to_char(sarappd_apdc_date,'mm/dd/yyyy')"apdc_date", row_number()
+        over (partition by  sarappd_pidm || sarappd_appl_no
+              order by      sarappd_seq_no desc nulls last) rn
+              from          sarappd@prod
+              where         sarappd_term_code_entry=:dd_term.STVTERM_CODE
+              and           sarappd_apdc_date>=to_date(:DateEdit1)
+              and           sarappd_pidm in(select "pidm" from a))
+              where         rn=1
+              and          "apdc"='RJ')
+
+      select (select        stvterm_desc from stvterm where stvterm_code="term") "semester",
+                           "user_id",
+             (select        guriden_desc from guriden@prod where guriden_user_id="user_id") "user_description",
+              count       ("pidm") "rejected"
+
+        from  a
+  inner join  b         on "b_pidm"="pidm"
+    group by               "term", "user_id"
+    order by                4 desc
+
+
+/*
+
+
+###
