@@ -1,0 +1,217 @@
+/*
+   argos
+   Folder: Enrollment Management
+   Report: APPL_Completed Applications
+   T01MAR2022 \ 77j5e
+
+   77j5e_ENROLLMENT-MANAGEMENT+APPL_Completed+Applications_220301_ARGOS
+   77j5e Enrollment Management APPL_Completed Applications
+   */
+
+
+-- Tab 1 \ Summary
+
+/* dd_1_term
+
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc "display" FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no+2 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no+1 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no+3 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       NULL, NULL,'--------------' FROM dual
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no-1 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no-2 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no-3 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       NULL, NULL, '--------------' FROM dual
+
+
+/* mc_1
+
+with a    as (select       "entry_term", "pidm", "lvl", "admt", "styp", "apst"
+        from (select        x.saradap_term_code_entry"entry_term", x.saradap_appl_no"app_no", x.saradap_pidm"pidm", x.saradap_levl_code"lvl", x.saradap_admt_code"admt", x.saradap_styp_code"styp", x.saradap_apst_code"apst", to_char(x.saradap_apst_date,'mm/dd/yyyy')"apst_date", row_number()
+        over (partition by  x.saradap_pidm
+              order by      x.saradap_appl_no desc nulls last) rn
+              from          saradap@prod x
+              where         x.saradap_term_code_entry=:dd_1_term.STVTERM_CODE)
+              where         rn=1
+              and          "apst"='C')
+
+      select               "lvl", "admt",
+             (select        stvadmt_desc from stvadmt where stvadmt_code="admt") "admit_type",
+                           "styp",
+             (select        stvstyp_desc from stvstyp where stvstyp_code="styp") "student_type",
+              count       ("pidm") "count"
+
+        from  a
+
+    group by               "lvl", "admt", "styp"
+
+    order by                1, 2, 4
+
+
+-- Tab 2 \ Applications
+
+/* dd_2_term
+
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc "display" FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no+2 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no+1 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no+3 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       NULL, NULL,'--------------' FROM dual
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no-1 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no-2 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no-3 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       NULL, NULL, '--------------' FROM dual
+
+/* MC_2
+
+with a      as (select       "entry_term", "pidm", "app_no", "lvl", "admt", "styp", "apst", "apst_date"
+          from (select        x.saradap_term_code_entry"entry_term", x.saradap_appl_no"app_no", x.saradap_pidm"pidm", x.saradap_levl_code"lvl", x.saradap_admt_code"admt", x.saradap_styp_code"styp", x.saradap_apst_code"apst", to_char(x.saradap_apst_date,'mm/dd/yyyy')"apst_date", row_number()
+          over (partition by  x.saradap_pidm
+                order by      x.saradap_appl_no desc nulls last) rn
+                from          saradap@prod x
+                where         x.saradap_term_code_entry=:dd_2_term.STVTERM_CODE
+and not exists (select        y.saradap_pidm from saradap@prod y where y.saradap_pidm=x.saradap_pidm and y.saradap_appl_no>x.saradap_appl_no))
+                where         rn=1
+                and          "apst"='C'),
+name        as (select        y.spriden_pidm"name_pidm", y.spriden_id"pvamu_id", y.spriden_last_name"last_name", y.spriden_first_name"first_name", y.spriden_mi"mi_name"
+                from          spriden@prod y
+                where         y.spriden_change_ind is null
+                and           y.spriden_entity_ind='P'
+                and           y.spriden_pidm in(select "pidm" from a))
+
+        select               "entry_term",
+               (select        stvterm_desc from stvterm where stvterm_code="entry_term") "semester",
+                             "pvamu_id", "last_name", "first_name", "mi_name",
+                             "app_no", "lvl", "admt",
+               (select        stvadmt_desc from stvadmt where stvadmt_code="admt") "admit_type",
+                             "styp",
+               (select        stvstyp_desc from stvstyp where stvstyp_code="styp") "student_type",
+                             "apst",
+               (select        stvapst_desc from stvapst where stvapst_code="apst") "apst_status",
+                             "apst_date"
+
+          from  a
+     left join  name      on "name_pidm"="pidm"
+
+         where  :btn2         is not null
+
+      order by               "last_name", "first_name", "mi_name"
+
+-- Tab 3 \ Select Population
+
+/* dd_3_term
+
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc "display" FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no+2 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no+1 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no+3 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       NULL, NULL,'--------------' FROM dual
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no-1 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no-2 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       stvterm_code, stvterm_desc, stvterm_code||' - '||stvterm_desc FROM pvamuir.ir_v_stvterm WHERE term_no=(SELECT term_no-3 FROM pvamuir.ir_v_stvterm WHERE current_term='Y')
+  UNION ALL
+  SELECT       NULL, NULL, '--------------' FROM dual
+
+/* LB_3_LEVEL
+
+              select        distinct x.saradap_levl_code "lvl", x.saradap_levl_code ||' -'|| (select stvlevl_desc from stvlevl where stvlevl_code=x.saradap_levl_code) "display"
+              from          saradap@prod x
+              where         x.saradap_apst_code='C'
+              and           x.saradap_term_code_entry=:dd_3_term.STVTERM_CODE
+              and          :CB_3_LEVEL = 'N'
+       union  select       'all codes' "code1", 'LEVEL Codes' "code2"
+              from          dual
+              where        :CB_3_LEVEL = 'Y'
+              order by      1 desc
+
+ 
+/* LB_3_ADMIT
+
+              select        distinct x.saradap_admt_code "admt", x.saradap_admt_code ||' -'|| (select stvadmt_desc from stvadmt where stvadmt_code=x.saradap_admt_code) "display"
+              from          saradap@prod x
+              where         x.saradap_apst_code='C'
+              and           x.saradap_term_code_entry=:dd_3_term.STVTERM_CODE
+              and          (x.saradap_levl_code = :CB_3_LEVEL or x.saradap_levl_code = :LB_3_LEVEL.lvl)
+              and          :CB_3_ADMT = 'N'
+       union  select       'all codes' "code1", 'ADMIT Codes' "code2"
+              from          dual
+              where        :CB_3_ADMT = 'Y'
+              order by      1 desc
+
+/* LB_3_STYP
+
+              select        distinct x.saradap_styp_code "styp", x.saradap_styp_code ||' -'|| (select stvstyp_desc from stvstyp where stvstyp_code=x.saradap_styp_code) "display"
+              from          saradap@prod x
+              where         x.saradap_apst_code='C'
+              and           x.saradap_term_code_entry=:dd_3_term.STVTERM_CODE
+              and          (x.saradap_levl_code = :CB_3_LEVEL or x.saradap_levl_code = :LB_3_LEVEL.lvl)
+              and          (x.saradap_admt_code = :CB_3_ADMT or x.saradap_admt_code = :LB_3_ADMT.admt)
+              and          :CB_3_STYP = 'N'
+       union  select       'all codes' "code1", 'STYP Codes' "code2"
+              from          dual
+              where        :CB_3_STYP = 'Y'
+              order by      1 desc
+
+/* MC_3
+
+with a      as (select       "entry_term", "pidm", "app_no", "lvl", "admt", "styp", "apst", "apst_date"
+          from (select        x.saradap_term_code_entry"entry_term", x.saradap_appl_no"app_no", x.saradap_pidm"pidm", x.saradap_levl_code"lvl", x.saradap_admt_code"admt", x.saradap_styp_code"styp", x.saradap_apst_code"apst", to_char(x.saradap_apst_date,'mm/dd/yyyy')"apst_date", row_number()
+          over (partition by  x.saradap_pidm
+                order by      x.saradap_appl_no desc nulls last) rn
+                from          saradap@prod x
+                where         x.saradap_term_code_entry=:dd_3_term.STVTERM_CODE
+and not exists (select        y.saradap_pidm from saradap@prod y where y.saradap_pidm=x.saradap_pidm and y.saradap_appl_no>x.saradap_appl_no))
+                where         rn=1
+                and          "apst"='C'),
+name        as (select        y.spriden_pidm"name_pidm", y.spriden_id"pvamu_id", y.spriden_last_name"last_name", y.spriden_first_name"first_name", y.spriden_mi"mi_name"
+                from          spriden@prod y
+                where         y.spriden_change_ind is null
+                and           y.spriden_entity_ind='P'
+                and           y.spriden_pidm in(select "pidm" from a))
+
+        select               "entry_term",
+               (select        stvterm_desc from stvterm where stvterm_code="entry_term") "semester",
+                             "pvamu_id", "last_name", "first_name", "mi_name",
+                             "app_no", "lvl", "admt",
+               (select        stvadmt_desc from stvadmt where stvadmt_code="admt") "admit_type",
+                             "styp",
+               (select        stvstyp_desc from stvstyp where stvstyp_code="styp") "student_type",
+                             "apst",
+               (select        stvapst_desc from stvapst where stvapst_code="apst") "apst_status",
+                             "apst_date"
+
+          from  a
+     left join  name      on "name_pidm"="pidm"
+
+         where  :btn3         is not null
+           and               ("lvl" =  :LB_3_LEVEL.lvl or :CB_3_LEVEL = 'Y')
+           and               ("admt" = :LB_3_ADMT.admt or :CB_3_ADMT = 'Y')
+           and               ("styp" = :LB_3_STYP.styp or :CB_3_STYP = 'Y')
+
+      order by               "last_name", "first_name", "mi_name"
+
+
+###
